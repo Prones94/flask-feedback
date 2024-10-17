@@ -53,7 +53,7 @@ def register():
         session['username'] = user.username
         flash('Registration successful! Welcome, {}!'.format(user.first_name), 'success')
 
-        return redirect(url_for('secret'))
+        return redirect(url_for('user_profile', username=user.username))
 
     return render_template('register.html', form=form)
 
@@ -65,15 +65,20 @@ def login():
     if user and user.verify_password(form.password.data):
       session['username'] = user.username
       flash('Logged in successfully', 'success')
-      return redirect(url_for('secret'))
+      return redirect(url_for('user_profile', username=user.username))
     else:
       flash('Invalid username or password', 'danger')
+
   return render_template('login.html', form=form)
 
-@app.route('/secret')
+@app.route('/users/<username>')
 @login_required
-def secret():
-  return render_template('secret.html')
+def user_profile(username):
+  if 'username' not in session or session['username'] != username:
+    flash("You are not authorized to view this page", "danger")
+    return redirect(url_for('login'))
+  user = User.query.filter_by(username=username).first_or_404()
+  return render_template('user_profile.html', user=user)
 
 @app.route('/logout', methods=['POST'])
 def logout():

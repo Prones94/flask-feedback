@@ -96,9 +96,11 @@ def logout():
 @app.route('/users/<username>/feedback/add', methods=['GET','POST'])
 @login_required
 def add_feedback(username):
-  if 'username' not in session or session['username'] != username:
-    flash("You  are not authorized to add feedback for this user", "danger")
-    return redirect(url_for('login'))
+  current_user = User.query.filter_by(username=session['username'].first())
+
+  if current_user.username != username and not current_user.is_admin:
+    flash("You are not authorized to add feedback for this user", "danger")
+    return redirect(url_for('user_profile', username=session['username']))
 
   form = FeedbackForm()
   if form.validate_on_submit():
@@ -113,6 +115,29 @@ def add_feedback(username):
     return redirect(url_for('user_profile', username=username))
 
   return render_template('add_feedback.html', form=form)
+
+@app.route('/admin/feedback/add/<username>', methods=['GET','POST'])
+@login_required
+def admin_add_feedback(username):
+  current_user = User.query.filter_by(username=session['username']).first()
+  if not current_user.is_admin:
+    flash("Admins only!", "danger")
+    return redirect(url_for('user_profile', username=session['username']))
+
+  form = FeedbackForm()
+  if form.validate_on_submit():
+    feedback = Feedback(
+      title=form.title.data,
+      content=form.content.data,
+      username=username
+    )
+    db.session.add(feedback)
+    db.session.commit()
+    flash('Feedback added successfully', 'success')
+    return redirect(url_for('user_profile', username=username))
+
+  return render_template('add_feedback.html', username=username)
+
 
 @app.errorhandler(404)
 def page_not_found(e):

@@ -32,33 +32,41 @@ def home():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    form = RegisterForm()
-    if form.validate_on_submit():
-        existing_user = User.query.filter_by(username=form.username.data).first()
-        if existing_user:
-            flash('Username already exists. Please choose another.', 'danger')
-            return render_template('register.html', form=form)
+  if 'username' in session:
+    flash('You are already logged in', 'info')
+    return redirect(url_for('user_profile', username=session['username']))
 
-        user = User(
-            username=form.username.data,
-            email=form.email.data,
-            first_name=form.first_name.data,
-            last_name=form.last_name.data
-        )
-        user.password = form.password.data
+  form = RegisterForm()
+  if form.validate_on_submit():
+      existing_user = User.query.filter_by(username=form.username.data).first()
+      if existing_user:
+          flash('Username already exists. Please choose another.', 'danger')
+          return render_template('register.html', form=form)
 
-        db.session.add(user)
-        db.session.commit()
+      user = User(
+          username=form.username.data,
+          email=form.email.data,
+          first_name=form.first_name.data,
+          last_name=form.last_name.data
+      )
+      user.password = form.password.data
 
-        session['username'] = user.username
-        flash('Registration successful! Welcome, {}!'.format(user.first_name), 'success')
+      db.session.add(user)
+      db.session.commit()
 
-        return redirect(url_for('user_profile', username=user.username))
+      session['username'] = user.username
+      flash('Registration successful! Welcome, {}!'.format(user.first_name), 'success')
 
-    return render_template('register.html', form=form)
+      return redirect(url_for('user_profile', username=user.username))
+
+  return render_template('register.html', form=form)
 
 @app.route('/login', methods=['GET','POST'])
 def login():
+  if 'username' in session:
+    flash('You are already logged in', 'info')
+    return redirect(url_for('user_profile', username=session['username']))
+
   form = LoginForm()
   if form.validate_on_submit():
     user = User.query.filter_by(username=form.username.data).first()
@@ -66,8 +74,7 @@ def login():
       session['username'] = user.username
       flash('Logged in successfully', 'success')
       return redirect(url_for('user_profile', username=user.username))
-    else:
-      flash('Invalid username or password', 'danger')
+    flash('Invalid username or password', 'danger')
 
   return render_template('login.html', form=form)
 
@@ -106,6 +113,14 @@ def add_feedback(username):
     return redirect(url_for('user_profile', username=username))
 
   return render_template('add_feedback.html', form=form)
+
+@app.errorhandler(404)
+def page_not_found(e):
+  return render_template('404/html'), 404
+
+@app.errorhandler(401)
+def unauthorized(e):
+  return render_template('401.html'), 401
 
 if __name__ == '__main__':
   app.run(debug=True)

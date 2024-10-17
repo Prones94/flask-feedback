@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, flash, session
 # from flask_bcrypt import Bcrypt
-from forms import RegisterForm, LoginForm
-from models import db, User
+from forms import RegisterForm, LoginForm, FeedbackForm
+from models import db, User, Feedback
 from flask_wtf import CSRFProtect
 from functools import wraps
 
@@ -85,6 +85,27 @@ def logout():
   session.pop('username', None)
   flash('You have been logged out', 'info')
   return redirect(url_for('register'))
+
+@app.route('/users/<username>/feedback/add', methods=['GET','POST'])
+@login_required
+def add_feedback(username):
+  if 'username' not in session or session['username'] != username:
+    flash("You  are not authorized to add feedback for this user", "danger")
+    return redirect(url_for('login'))
+
+  form = FeedbackForm()
+  if form.validate_on_submit():
+    feedback = Feedback(
+      title=form.title.data,
+      content=form.content.data,
+      username=username
+    )
+    db.session.add(feedback)
+    db.session.commit()
+    flash('Feedback added successfully', 'success')
+    return redirect(url_for('user_profile', username=username))
+
+  return render_template('add_feedback.html', form=form)
 
 if __name__ == '__main__':
   app.run(debug=True)
